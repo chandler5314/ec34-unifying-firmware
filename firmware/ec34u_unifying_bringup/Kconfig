@@ -1,0 +1,15 @@
+menu "EC34U Unifying bring-up"
+
+config EC34U_UNIFYING_ESB
+    bool "Enable EC34U Unifying ESB radio adapter"
+    default y
+    depends on ESB
+
+config EC34U_PAIR_ON_BOOT
+    bool "Attempt Unifying pairing on boot"
+    default n
+    help
+      When enabled, the bring-up firmware transmits pairing frames on boot.
+      Keep this disabled for compile-only CI builds.
+
+endmenu
