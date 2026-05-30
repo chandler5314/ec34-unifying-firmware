@@ -1,0 +1,16 @@
+build/
+out/
+*.zip
+*.uf2
+*.hex
+*.elf
+*.bin
+*.map
+*.lst
+*.log
+.vscode/
+.idea/
+repos/
+firmware/
+!firmware/ec34u_unifying_bringup/
+!firmware/ec34u_unifying_bringup/**
