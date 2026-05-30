@@ -1,0 +1,50 @@
+name: NCS Unifying Bring-up Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      ncs_ref:
+        description: "nRF Connect SDK git ref"
+        default: "v3.3.0"
+        required: true
+      board:
+        description: "Zephyr board target"
+        default: "nrf52840dk/nrf52840"
+        required: true
+
+jobs:
+  ncs-bringup-build:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/nrfconnect/sdk-nrf-toolchain:latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install west
+        run: python3 -m pip install --user west
+
+      - name: Initialize nRF Connect SDK
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          west init -m https://github.com/nrfconnect/sdk-nrf --mr "${{ inputs.ncs_ref }}" ncs
+          cd ncs
+          west update --narrow -o=--depth=1
+          west zephyr-export
+          python3 -m pip install --user -r zephyr/scripts/requirements.txt -r nrf/scripts/requirements.txt
+
+      - name: Build EC34U Unifying bring-up app
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          cd ncs
+          west build -b "${{ inputs.board }}" ../firmware/ec34u_unifying_bringup
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ec34u-unifying-bringup
+          path: |
+            ncs/build/zephyr/zephyr.hex
+            ncs/build/zephyr/zephyr.elf
+            ncs/build/zephyr/zephyr.map
