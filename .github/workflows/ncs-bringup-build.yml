@@ -33,15 +33,22 @@ jobs:
       - name: Prepare artifact directory
         run: mkdir -p artifacts
 
-      - name: Install Python tooling and west
+      - name: Install build prerequisites and west
         run: |
-          if ! python3 -m pip --version >/dev/null 2>&1; then
-            apt-get update
-            apt-get install -y python3-pip python3-venv
-          fi
+          apt-get update
+          apt-get install -y \
+            cmake \
+            device-tree-compiler \
+            ninja-build \
+            python3-pip \
+            python3-venv
           python3 -m pip install --user --break-system-packages west
           export PATH="$HOME/.local/bin:$PATH"
-          west --version | tee artifacts/west-version.txt
+          {
+            west --version
+            cmake --version | head -n 1
+            ninja --version
+          } | tee artifacts/tool-versions.txt
 
       - name: Initialize nRF Connect SDK
         run: |
@@ -70,6 +77,8 @@ jobs:
             date -u
             python3 --version || true
             command -v west || true
+            command -v cmake || true
+            command -v ninja || true
           } > artifacts/build-summary.txt
           cp -f ncs/build/zephyr/zephyr.hex artifacts/ 2>/dev/null || true
           cp -f ncs/build/zephyr/zephyr.elf artifacts/ 2>/dev/null || true
