@@ -25,4 +25,20 @@ jobs:
         run: cmake --build build/host
 
       - name: Run smoke test
-        run: ./build/host/unifying-prototype/ec34u_protocol_smoke
+        run: |
+          mkdir -p artifacts
+          ./build/host/unifying-prototype/ec34u_protocol_smoke | tee artifacts/protocol-smoke-output.txt
+
+      - name: Collect host artifacts
+        if: always()
+        run: |
+          mkdir -p artifacts
+          cp -f build/host/unifying-prototype/ec34u_protocol_smoke artifacts/ 2>/dev/null || true
+
+      - name: Upload host artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ec34u-host-protocol-check
+          path: artifacts/
+          if-no-files-found: warn
