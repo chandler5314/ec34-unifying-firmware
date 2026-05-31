@@ -13,3 +13,5 @@ config EC34U_PAIR_ON_BOOT
       Keep this disabled for compile-only CI builds.
 
 endmenu
+
+source "Kconfig.zephyr"
