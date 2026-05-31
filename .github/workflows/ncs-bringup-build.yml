@@ -25,6 +25,7 @@ jobs:
     env:
       NCS_REF: ${{ github.event.inputs.ncs_ref || 'v3.3.0' }}
       BOARD: ${{ github.event.inputs.board || 'nrf52840dk/nrf52840' }}
+      ZEPHYR_SDK_VERSION: 1.0.1
 
     steps:
       - name: Check out repository
@@ -39,9 +40,12 @@ jobs:
           apt-get install -y \
             cmake \
             device-tree-compiler \
+            file \
             ninja-build \
             python3-pip \
-            python3-venv
+            python3-venv \
+            wget \
+            xz-utils
           python3 -m pip install --user --break-system-packages west
           export PATH="$HOME/.local/bin:$PATH"
           {
@@ -49,6 +53,16 @@ jobs:
             cmake --version | head -n 1
             ninja --version
           } | tee artifacts/tool-versions.txt
+
+      - name: Install Zephyr SDK
+        run: |
+          wget -q "https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v${ZEPHYR_SDK_VERSION}/zephyr-sdk-${ZEPHYR_SDK_VERSION}_linux-x86_64_minimal.tar.xz"
+          tar -xJf "zephyr-sdk-${ZEPHYR_SDK_VERSION}_linux-x86_64_minimal.tar.xz"
+          cd "zephyr-sdk-${ZEPHYR_SDK_VERSION}"
+          bash ./setup.sh -t arm-zephyr-eabi -h -c
+          echo "ZEPHYR_SDK_INSTALL_DIR=$PWD" >> "$GITHUB_ENV"
+          echo "ZEPHYR_TOOLCHAIN_VARIANT=zephyr" >> "$GITHUB_ENV"
+          find "$PWD" -maxdepth 3 -name 'Zephyr-sdkConfig.cmake' -print | tee ../artifacts/zephyr-sdk-paths.txt
 
       - name: Initialize nRF Connect SDK
         run: |
@@ -74,11 +88,14 @@ jobs:
             echo "head_sha=${{ github.sha }}"
             echo "ncs_ref=$NCS_REF"
             echo "board=$BOARD"
+            echo "zephyr_sdk_version=$ZEPHYR_SDK_VERSION"
+            echo "zephyr_sdk_install_dir=${ZEPHYR_SDK_INSTALL_DIR:-}"
             date -u
             python3 --version || true
             command -v west || true
             command -v cmake || true
             command -v ninja || true
+            find "${ZEPHYR_SDK_INSTALL_DIR:-.}" -maxdepth 3 -name 'Zephyr-sdkConfig.cmake' -print 2>/dev/null || true
           } > artifacts/build-summary.txt
           cp -f ncs/build/zephyr/zephyr.hex artifacts/ 2>/dev/null || true
           cp -f ncs/build/zephyr/zephyr.elf artifacts/ 2>/dev/null || true
