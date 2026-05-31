@@ -1,6 +1,11 @@
 name: NCS Unifying Bring-up Build
 
 on:
+  push:
+    paths:
+      - '.github/workflows/ncs-bringup-build.yml'
+      - 'firmware/ec34u_unifying_bringup/**'
+      - 'unifying-prototype/**'
   workflow_dispatch:
     inputs:
       ncs_ref:
@@ -17,6 +22,9 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/nrfconnect/sdk-nrf-toolchain:latest
+    env:
+      NCS_REF: ${{ github.event.inputs.ncs_ref || 'v3.3.0' }}
+      BOARD: ${{ github.event.inputs.board || 'nrf52840dk/nrf52840' }}
 
     steps:
       - name: Check out repository
@@ -28,7 +36,7 @@ jobs:
       - name: Initialize nRF Connect SDK
         run: |
           export PATH="$HOME/.local/bin:$PATH"
-          west init -m https://github.com/nrfconnect/sdk-nrf --mr "${{ inputs.ncs_ref }}" ncs
+          west init -m https://github.com/nrfconnect/sdk-nrf --mr "$NCS_REF" ncs
           cd ncs
           west update --narrow -o=--depth=1
           west zephyr-export
@@ -38,13 +46,23 @@ jobs:
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           cd ncs
-          west build -b "${{ inputs.board }}" ../firmware/ec34u_unifying_bringup
+          west build -b "$BOARD" ../firmware/ec34u_unifying_bringup
+
+      - name: Collect firmware artifacts
+        if: always()
+        run: |
+          mkdir -p artifacts
+          cp -f ncs/build/zephyr/zephyr.hex artifacts/ 2>/dev/null || true
+          cp -f ncs/build/zephyr/zephyr.elf artifacts/ 2>/dev/null || true
+          cp -f ncs/build/zephyr/zephyr.map artifacts/ 2>/dev/null || true
+          cp -f ncs/build/zephyr/.config artifacts/zephyr.config 2>/dev/null || true
+          cp -f ncs/build/zephyr/zephyr.dts artifacts/zephyr.dts 2>/dev/null || true
+          cp -f ncs/build/CMakeCache.txt artifacts/CMakeCache.txt 2>/dev/null || true
 
       - name: Upload firmware artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ec34u-unifying-bringup
-          path: |
-            ncs/build/zephyr/zephyr.hex
-            ncs/build/zephyr/zephyr.elf
-            ncs/build/zephyr/zephyr.map
+          path: artifacts/
+          if-no-files-found: warn
