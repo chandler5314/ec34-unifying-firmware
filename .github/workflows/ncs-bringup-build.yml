@@ -83,6 +83,8 @@ jobs:
         if: always()
         run: |
           mkdir -p artifacts
+          APP_ZEPHYR_DIR="ncs/build/ec34u_unifying_bringup/zephyr"
+          LEGACY_ZEPHYR_DIR="ncs/build/zephyr"
           {
             echo "run_id=${{ github.run_id }}"
             echo "head_sha=${{ github.sha }}"
@@ -96,13 +98,18 @@ jobs:
             command -v cmake || true
             command -v ninja || true
             find "${ZEPHYR_SDK_INSTALL_DIR:-.}" -maxdepth 3 -name 'Zephyr-sdkConfig.cmake' -print 2>/dev/null || true
+            echo "firmware_candidates:"
+            find ncs/build -maxdepth 5 -type f \( -name '*.hex' -o -name '*.elf' -o -name '*.map' -o -name '*.bin' \) -print 2>/dev/null || true
           } > artifacts/build-summary.txt
-          cp -f ncs/build/zephyr/zephyr.hex artifacts/ 2>/dev/null || true
-          cp -f ncs/build/zephyr/zephyr.elf artifacts/ 2>/dev/null || true
-          cp -f ncs/build/zephyr/zephyr.map artifacts/ 2>/dev/null || true
-          cp -f ncs/build/zephyr/.config artifacts/zephyr.config 2>/dev/null || true
-          cp -f ncs/build/zephyr/zephyr.dts artifacts/ 2>/dev/null || true
-          cp -f ncs/build/CMakeCache.txt artifacts/ 2>/dev/null || true
+          for ext in hex elf map bin; do
+            cp -f "$APP_ZEPHYR_DIR/zephyr.$ext" "artifacts/ec34u_unifying_bringup.$ext" 2>/dev/null || true
+            cp -f "$LEGACY_ZEPHYR_DIR/zephyr.$ext" "artifacts/zephyr.$ext" 2>/dev/null || true
+          done
+          cp -f ncs/build/merged.hex artifacts/merged.hex 2>/dev/null || true
+          cp -f "$APP_ZEPHYR_DIR/.config" artifacts/zephyr.config 2>/dev/null || true
+          cp -f "$APP_ZEPHYR_DIR/zephyr.dts" artifacts/zephyr.dts 2>/dev/null || true
+          cp -f ncs/build/CMakeCache.txt artifacts/sysbuild-CMakeCache.txt 2>/dev/null || true
+          cp -f ncs/build/ec34u_unifying_bringup/CMakeCache.txt artifacts/app-CMakeCache.txt 2>/dev/null || true
 
       - name: Upload firmware artifacts
         if: always()
