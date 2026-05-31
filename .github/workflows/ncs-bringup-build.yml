@@ -30,8 +30,18 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Install west
-        run: python3 -m pip install --user west
+      - name: Prepare artifact directory
+        run: mkdir -p artifacts
+
+      - name: Install Python tooling and west
+        run: |
+          if ! python3 -m pip --version >/dev/null 2>&1; then
+            apt-get update
+            apt-get install -y python3-pip python3-venv
+          fi
+          python3 -m pip install --user --break-system-packages west
+          export PATH="$HOME/.local/bin:$PATH"
+          west --version | tee artifacts/west-version.txt
 
       - name: Initialize nRF Connect SDK
         run: |
@@ -40,7 +50,7 @@ jobs:
           cd ncs
           west update --narrow -o=--depth=1
           west zephyr-export
-          python3 -m pip install --user -r zephyr/scripts/requirements.txt -r nrf/scripts/requirements.txt
+          python3 -m pip install --user --break-system-packages -r zephyr/scripts/requirements.txt -r nrf/scripts/requirements.txt
 
       - name: Build EC34U Unifying bring-up app
         run: |
@@ -52,6 +62,15 @@ jobs:
         if: always()
         run: |
           mkdir -p artifacts
+          {
+            echo "run_id=${{ github.run_id }}"
+            echo "head_sha=${{ github.sha }}"
+            echo "ncs_ref=$NCS_REF"
+            echo "board=$BOARD"
+            date -u
+            python3 --version || true
+            command -v west || true
+          } > artifacts/build-summary.txt
           cp -f ncs/build/zephyr/zephyr.hex artifacts/ 2>/dev/null || true
           cp -f ncs/build/zephyr/zephyr.elf artifacts/ 2>/dev/null || true
           cp -f ncs/build/zephyr/zephyr.map artifacts/ 2>/dev/null || true
